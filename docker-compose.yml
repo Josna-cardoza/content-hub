@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: atklhub-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: contentdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # API Gateway / Middle Tier
+  bff:
+    build:
+      context: ./middle-tier
+      dockerfile: Dockerfile
+    container_name: atklhub-bff
+    ports:
+      - "8000:8000"
+    environment:
+      - DOTNET_API_URL=http://data-service:8080
+    depends_on:
+      - data-service
+    restart: always
+
+  # Core Data Service
+  data-service:
+    build:
+      context: ./data-service
+      dockerfile: Dockerfile
+    container_name: atklhub-data-service
+    ports:
+      - "8080:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=contentdb;Username=admin;Password=password123
+    depends_on:
+      - postgres
+    restart: always
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: atklhub-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - bff
+    restart: always
+
+volumes:
+  postgres_data:
