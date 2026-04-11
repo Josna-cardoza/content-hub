@@ -24,6 +24,7 @@ obj/
 *.userprefs
 TestResults/
 *.log
+google-auth.json
 
 # Misc
 .DS_Store
