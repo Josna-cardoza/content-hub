@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 const Articles = () => {
   const [articles, setArticles] = useState([]);
@@ -80,10 +81,10 @@ const Articles = () => {
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', flex: 1 }}>{article.summary}</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>
                   <span>{new Date(article.createdAt).toLocaleDateString()}</span>
-                  <button style={{
+                  <Link to={`/articles/${article.id}`} style={{
                     background: 'var(--accent-color)',
                     color: 'white',
-                    border: 'none',
+                    textDecoration: 'none',
                     padding: '8px 16px',
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -93,7 +94,7 @@ const Articles = () => {
                   }}
                   onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
                   onMouseLeave={e => e.currentTarget.style.filter = 'brightness(1)'}
-                  >Read More</button>
+                  >Read More</Link>
                 </div>
               </div>
             </div>

@@ -11,14 +11,17 @@ public class Article
     // SEO fields
     public string Slug { get; set; } = string.Empty;
 
+    // Draft or Published
+    public string Status { get; set; } = "Published"; // Default to Published for existing seeding logic
+
     // Recommendation/Metric fields
     public int ViewCount { get; set; } = 0;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Foreign Key to Author
-    public int AuthorId { get; set; }
-    public User Author { get; set; } = null!;
+    public int? AuthorId { get; set; }
+    public User? Author { get; set; }
 
     // Many-to-Many relationships
     public List<Tag> Tags { get; set; } = new();

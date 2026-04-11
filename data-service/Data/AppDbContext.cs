@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<Article> Articles => Set<Article>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Comment> Comments => Set<Comment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +29,18 @@ public class AppDbContext : DbContext
             
         modelBuilder.Entity<User>()
             .HasIndex(u => u.GoogleId)
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("\"GoogleId\" IS NOT NULL");
+
+        modelBuilder.Entity<Comment>()
+            .HasOne(c => c.Article)
+            .WithMany()
+            .HasForeignKey(c => c.ArticleId);
+
+        modelBuilder.Entity<Comment>()
+            .HasOne(c => c.User)
+            .WithMany()
+            .HasForeignKey(c => c.UserId)
+            .IsRequired(false);
     }
 }

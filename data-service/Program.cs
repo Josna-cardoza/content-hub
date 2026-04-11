@@ -1,9 +1,16 @@
 using DataService.Data;
+using DataService.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+using System.Text;
+using Google.Apis.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -19,6 +26,66 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+var googleClientId = builder.Configuration["GOOGLE_CLIENT_ID"] ?? Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID");
+var localJwtSecret = builder.Configuration["JWT_SECRET"] ?? "atklhub_super_secret_dev_key_2026_atklhub";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // We will support both Google and our local issuer
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = false,
+            RoleClaimType = ClaimTypes.Role
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var claimsIdentity = (ClaimsIdentity)context.Principal!.Identity!;
+
+                // Try GoogleId (sub claim) first — for Google-authenticated users
+                var sub = claimsIdentity.FindFirst("sub")?.Value;
+                // For local users, NameIdentifier holds the integer DB user ID
+                var nameId = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                User? user = null;
+
+                if (!string.IsNullOrEmpty(sub))
+                {
+                    user = await dbContext.Users.FirstOrDefaultAsync(u => u.GoogleId == sub);
+                }
+
+                if (user == null && int.TryParse(nameId, out var userId))
+                {
+                    user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                }
+
+                if (user != null)
+                {
+                    if (!claimsIdentity.HasClaim(c => c.Type == ClaimTypes.Role))
+                    {
+                        claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, user.Role));
+                    }
+                    user.LastLoginAt = DateTime.UtcNow;
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("CreatorPlus", policy => policy.RequireRole("Admin", "Creator"));
+    options.AddPolicy("ReaderPlus", policy => policy.RequireRole("Admin", "Creator", "Reader"));
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -32,7 +99,7 @@ if (app.Environment.IsDevelopment())
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.EnsureCreated(); // Creates DB if not exists
+    context.Database.EnsureCreated(); // Creates DB with all current models
     
     if (!context.Users.Any())
     {
@@ -85,6 +152,7 @@ using (var scope = app.Services.CreateScope())
 }
 // ==== SEED DATA END ====
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

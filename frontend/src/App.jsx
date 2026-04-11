@@ -4,11 +4,30 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Dashboard from './pages/Dashboard';
+import Account from './pages/Account';
+import CreateArticle from './pages/CreateArticle';
+import EditArticle from './pages/EditArticle';
 import Articles from './pages/Articles';
+import ArticleDetail from './pages/ArticleDetail';
+import Login from './pages/Login';
+import UserDropdown from './components/UserDropdown';
+import { googleLogout } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
 import './index.css';
 
 function App() {
-  const [isLogged, setIsLogged] = useState(false);
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    googleLogout();
+    setUser(null);
+    localStorage.removeItem('user');
+  };
 
   return (
     <BrowserRouter>
@@ -19,23 +38,12 @@ function App() {
           <Link to="/articles">Articles</Link>
           <Link to="/about">About Us</Link>
           <Link to="/contact">Contact</Link>
-          {isLogged ? (
-            <>
-              <Link to="/dashboard" style={{ color: 'var(--accent-color)' }}>Dashboard</Link>
-              <button 
-                onClick={() => setIsLogged(false)} 
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '1rem' }}
-              >
-                Logout
-              </button>
-            </>
+          {user ? (
+            <UserDropdown user={user} onLogout={handleLogout} />
           ) : (
-            <button 
-              onClick={() => setIsLogged(true)} 
-              style={{ background: 'transparent', border: '1px solid var(--accent-color)', color: 'var(--accent-color)', cursor: 'pointer', padding: '4px 12px', borderRadius: '4px', fontWeight: 600, fontSize: '0.9rem' }}
-            >
-              Login (Mock)
-            </button>
+            <Link to="/login" className="login-nav-btn">
+              Sign In
+            </Link>
           )}
         </div>
       </nav>
@@ -45,8 +53,13 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard user={user} />} />
+          <Route path="/account" element={<Account user={user} onUpdateUser={setUser} />} />
+          <Route path="/create-article" element={<CreateArticle user={user} />} />
+          <Route path="/edit-article/:id" element={<EditArticle user={user} />} />
           <Route path="/articles" element={<Articles />} />
+          <Route path="/articles/:id" element={<ArticleDetail user={user} />} />
+          <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
         </Routes>
       </main>
 
